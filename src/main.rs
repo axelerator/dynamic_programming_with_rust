@@ -1,9 +1,7 @@
 mod exercise1;
 
-use exercise1::factorial;
+mod read;
 
 fn main() {
-    for n in 0..22 {
-        println!("{}! = {}", n, factorial(n));
-    }
+    exercise1::main();
 }

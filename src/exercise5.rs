@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 // The board dimens5ons.
-const NUM_ROWS: usize = 6;
+const NUM_ROWS: usize = 7;
 const NUM_COLS: usize = NUM_ROWS;
 const INUM_ROWS: i32 = NUM_ROWS as i32;
 const INUM_COLS: i32 = NUM_COLS as i32;
@@ -128,13 +128,45 @@ fn place_queens_1(board: &mut [[char; NUM_COLS]; NUM_ROWS], r: i32, c: i32) -> b
     return false;
 }
 
+fn place_queens_2(
+    board: &mut [[char; NUM_COLS]; NUM_ROWS],
+    r: i32,
+    c: i32,
+    num_placed: usize,
+) -> bool {
+    if num_placed >= NUM_ROWS {
+        return board_is_a_solution(board);
+    }
+
+    if r >= INUM_ROWS {
+        return board_is_a_solution(board);
+    }
+    // Find the next square.
+    let mut next_r = r;
+    let mut next_c = c + 1;
+    if next_c >= INUM_ROWS {
+        next_r += 1;
+        next_c = 0;
+    }
+    place_queens_2(board, next_r, next_c, num_placed);
+    if board_is_a_solution(board) {
+        return true;
+    }
+    board[r as usize][c as usize] = 'Q';
+    place_queens_2(board, next_r, next_c, num_placed + 1);
+    if board_is_a_solution(board) {
+        return true;
+    }
+    board[r as usize][c as usize] = '.';
+    return false;
+}
 pub fn main() {
     // Create a NUM_ROWS x NUM_COLS array with all entries Initialized to UNVISITED.
     let mut board = [['.'; NUM_COLS]; NUM_ROWS];
 
     let start = Instant::now();
-    let success = place_queens_1(&mut board, 0, 0);
-    //let success = place_queens_2(& mut board, 0, 0, 0);
+    //let success = place_queens_1(&mut board, 0, 0);
+    let success = place_queens_2(&mut board, 0, 0, 0);
     //let success = place_queens_3(& mut board);
     let duration = start.elapsed();
 

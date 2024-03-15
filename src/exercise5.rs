@@ -3,6 +3,7 @@ use std::time::Instant;
 // The board dimensions.
 const NUM_ROWS: usize = 5;
 const NUM_COLS: usize = NUM_ROWS;
+const NUM_FIELDS: usize = NUM_ROWS * NUM_COLS;
 const NUM_QUEENS: usize = NUM_ROWS;
 const INUM_ROWS: i32 = NUM_ROWS as i32;
 const INUM_COLS: i32 = NUM_COLS as i32;
@@ -11,6 +12,10 @@ const INUM_COLS: i32 = NUM_COLS as i32;
 enum Field {
     Empty,
     Queen,
+}
+
+fn holds_queen(board: &Board, pos: &Position) -> bool {
+    board[pos.row as usize][pos.column as usize] == Field::Queen
 }
 
 type Board = [[Field; NUM_COLS]; NUM_ROWS];
@@ -49,7 +54,7 @@ fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bo
 
     let mut pos = pos.clone();
     loop {
-        if board[pos.row as usize][pos.column as usize] == Field::Queen {
+        if holds_queen(board, &pos) {
             // If we already have a queen on this row,
             // then this board is not legal.
             if has_queen {
@@ -123,12 +128,12 @@ fn board_is_a_solution(board: &mut Board) -> bool {
 
     // See if the board contains exactly NUM_ROWS queens.
     let mut num_queens = 0;
-    for r in 0..NUM_ROWS {
-        for c in 0..NUM_COLS {
-            if board[r as usize][c as usize] == Field::Queen {
-                num_queens += 1;
-            }
+    let mut pos = Position { row: 0, column: 0 };
+    for _ in 0..NUM_FIELDS {
+        if holds_queen(board, &pos) {
+            num_queens += 1;
         }
+        pos = next_position(&pos);
     }
     return num_queens == NUM_ROWS;
 }
@@ -144,13 +149,22 @@ fn place_queens_1(board: &mut Board, pos: Position) -> bool {
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = Field::Queen;
+    put_queen_at(board, &pos);
+
     place_queens_1(board, next_pos);
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = Field::Empty;
+    remove_queen_from(board, &pos);
     return false;
+}
+
+fn put_queen_at(board: &mut Board, pos: &Position) {
+    board[pos.row as usize][pos.column as usize] = Field::Queen;
+}
+
+fn remove_queen_from(board: &mut Board, pos: &Position) {
+    board[pos.row as usize][pos.column as usize] = Field::Empty;
 }
 
 fn next_position(pos: &Position) -> Position {
@@ -178,16 +192,17 @@ fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
     // Find the next square.
     let next_pos = next_position(&pos);
     place_queens_2(board, next_pos.clone(), num_placed);
-
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = Field::Queen;
+
+    put_queen_at(board, &pos);
     place_queens_2(board, next_pos, num_placed + 1);
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = Field::Empty;
+
+    remove_queen_from(board, &pos);
     return false;
 }
 

@@ -152,31 +152,28 @@ fn next_position(pos: &Position) -> Position {
     };
 }
 
-fn place_queens_2(board: &mut Board, r: i32, c: i32, num_placed: usize) -> bool {
+fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
     if num_placed >= NUM_ROWS {
         return board_is_a_solution(board);
     }
 
-    if r >= INUM_ROWS {
+    if pos.row >= INUM_ROWS {
         return board_is_a_solution(board);
     }
+
     // Find the next square.
-    let mut next_r = r;
-    let mut next_c = c + 1;
-    if next_c >= INUM_ROWS {
-        next_r += 1;
-        next_c = 0;
-    }
-    place_queens_2(board, next_r, next_c, num_placed);
+    let next_pos = next_position(&pos);
+    place_queens_2(board, next_pos.clone(), num_placed);
+
     if board_is_a_solution(board) {
         return true;
     }
-    board[r as usize][c as usize] = 'Q';
-    place_queens_2(board, next_r, next_c, num_placed + 1);
+    board[pos.row as usize][pos.column as usize] = 'Q';
+    place_queens_2(board, next_pos, num_placed + 1);
     if board_is_a_solution(board) {
         return true;
     }
-    board[r as usize][c as usize] = '.';
+    board[pos.row as usize][pos.column as usize] = '.';
     return false;
 }
 
@@ -188,8 +185,9 @@ fn place_queens_3(board: &mut Board) -> bool {
     let mut num_attacking = [[0; NUM_COLS]; NUM_ROWS];
 
     // Call do_place_queens_3.
-    let mut num_placed = 0;
-    return do_place_queens_3(board, num_placed, 0, 0, &mut num_attacking);
+    let num_placed = 0;
+    let origin = Position { row: 0, column: 0 };
+    return do_place_queens_3(board, num_placed, origin, &mut num_attacking);
 }
 
 // Try placing a queen at position [r][c].
@@ -199,8 +197,7 @@ fn place_queens_3(board: &mut Board) -> bool {
 fn do_place_queens_3(
     board: &mut Board,
     mut num_placed: i32,
-    r: i32,
-    c: i32,
+    pos: Position,
     num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
 ) -> bool {
     // See if we have placed all of the queens.
@@ -210,43 +207,37 @@ fn do_place_queens_3(
     }
 
     // See if we have examined the whole board.
-    if r >= INUM_ROWS {
+    if pos.row >= INUM_ROWS {
         // We have examined all of the squares but this is not a solution.
         return false;
     }
 
     // Find the next square.
-    let mut next_r = r;
-    let mut next_c = c + 1;
-    if next_c >= INUM_ROWS {
-        next_r += 1;
-        next_c = 0;
-    }
+    let next_pos = next_position(&pos);
 
     // Leave no queen in this square and
     // recursively assign the next square.
-    if do_place_queens_3(board, num_placed, next_r, next_c, num_attacking) {
+    if do_place_queens_3(board, num_placed, next_pos.clone(), num_attacking) {
         return true;
     }
 
     // See if we can place a queen at (r, c).
-    if num_attacking[r as usize][c as usize] == 0 {
+    if num_attacking[pos.row as usize][pos.column as usize] == 0 {
         // Try placing a queen here and
         // recursively assigning the next square.
-        board[r as usize][c as usize] = 'Q';
+        board[pos.row as usize][pos.column as usize] = 'Q';
         num_placed += 1;
 
         // Increment the attack counts for this queen.
-        adjust_attack_counts(num_attacking, r, c, 1);
+        adjust_attack_counts(num_attacking, &pos, 1);
 
-        if do_place_queens_3(board, num_placed, next_r, next_c, num_attacking) {
+        if do_place_queens_3(board, num_placed, next_pos, num_attacking) {
             return true;
         }
 
         // That didn't work so remove this queen.
-        board[r as usize][c as usize] = '.';
-        num_placed -= 1;
-        adjust_attack_counts(num_attacking, r, c, -1);
+        board[pos.row as usize][pos.column as usize] = '.';
+        adjust_attack_counts(num_attacking, &pos, -1);
     }
 
     // If we get here, then there is no solution from
@@ -258,24 +249,23 @@ fn do_place_queens_3(
 // Add amount to the attack counts for this square.
 fn adjust_attack_counts(
     num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
-    r: i32,
-    c: i32,
+    pos: &Position,
     amount: i32,
 ) {
     // Attacks in the same row.
     for i in 0..INUM_COLS {
-        num_attacking[r as usize][i as usize] += amount
+        num_attacking[pos.row as usize][i as usize] += amount
     }
 
     // Attacks in the same column.
     for i in 0..INUM_ROWS {
-        num_attacking[i as usize][c as usize] += amount
+        num_attacking[i as usize][pos.column as usize] += amount
     }
 
     // Attacks in the upper left to lower right diagonal.
     for i in -INUM_ROWS..INUM_ROWS {
-        let test_r = r + i;
-        let test_c = c + i;
+        let test_r = pos.row + i;
+        let test_c = pos.column + i;
         if test_r >= 0 && test_r < INUM_ROWS && test_c >= 0 && test_c < INUM_ROWS {
             num_attacking[test_r as usize][test_c as usize] += amount;
         }
@@ -283,8 +273,8 @@ fn adjust_attack_counts(
 
     // Attacks in the upper right to lower left diagonal.
     for i in -INUM_ROWS..INUM_ROWS {
-        let test_r = r + i;
-        let test_c = c - i;
+        let test_r = pos.row + i;
+        let test_c = pos.column - i;
         if test_r >= 0 && test_r < INUM_ROWS && test_c >= 0 && test_c < INUM_ROWS {
             num_attacking[test_r as usize][test_c as usize] += amount;
         }

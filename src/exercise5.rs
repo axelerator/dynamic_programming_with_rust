@@ -10,7 +10,7 @@ const INUM_COLS: i32 = NUM_COLS as i32;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Field {
-    Empty,
+    Empty(usize),
     Queen,
 }
 
@@ -69,7 +69,7 @@ impl Position {
 
 impl Board {
     fn empty() -> Board {
-        Board([[Field::Empty; NUM_COLS]; NUM_ROWS])
+        Board([[Field::Empty(0); NUM_COLS]; NUM_ROWS])
     }
 
     fn holds_queen(self: &Board, pos: &Position) -> bool {
@@ -192,7 +192,7 @@ impl Board {
     }
 
     fn remove_queen_from(self: &mut Board, pos: &Position) {
-        self.0[pos.row as usize][pos.column as usize] = Field::Empty;
+        self.0[pos.row as usize][pos.column as usize] = Field::Empty(0);
     }
 
     fn place_queens_2(self: &mut Board, pos: Position, num_placed: usize) -> bool {
@@ -356,7 +356,7 @@ fn dump_board(board: &mut Board) {
     for r in 0..NUM_ROWS {
         for c in 0..NUM_COLS {
             let c = match board.0[r][c] {
-                Field::Empty => ".",
+                Field::Empty(_) => ".",
                 Field::Queen => "Q",
             };
             print!("{:<02}", c);

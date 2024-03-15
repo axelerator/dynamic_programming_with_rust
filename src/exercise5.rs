@@ -7,7 +7,13 @@ const NUM_QUEENS: usize = NUM_ROWS;
 const INUM_ROWS: i32 = NUM_ROWS as i32;
 const INUM_COLS: i32 = NUM_COLS as i32;
 
-type Board = [[char; NUM_COLS]; NUM_ROWS];
+#[derive(Clone, Copy, PartialEq)]
+enum Field {
+    Empty,
+    Queen,
+}
+
+type Board = [[Field; NUM_COLS]; NUM_ROWS];
 
 enum Direction {
     Horizontal,
@@ -22,20 +28,28 @@ struct Position {
     column: i32,
 }
 
+fn move_in(pos: &mut Position, direction: &Direction) {
+    match direction {
+        Direction::Horizontal => pos.column += 1,
+        Direction::Vertical => pos.row += 1,
+        Direction::DiagonalRight => {
+            pos.row += 1;
+            pos.column += 1
+        }
+        Direction::DiagonalLeft => {
+            pos.row += 1;
+            pos.column -= 1
+        }
+    }
+}
+
 // Return true if this series of squares contains at most one queen.
 fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bool {
     let mut has_queen = false;
 
-    let mut r = pos.row;
-    let mut c = pos.column;
-    let (dr, dc) = match direction {
-        Direction::Horizontal => (0, 1),
-        Direction::Vertical => (1, 0),
-        Direction::DiagonalRight => (1, 1),
-        Direction::DiagonalLeft => (1, -1),
-    };
+    let mut pos = pos.clone();
     loop {
-        if board[r as usize][c as usize] == 'Q' {
+        if board[pos.row as usize][pos.column as usize] == Field::Queen {
             // If we already have a queen on this row,
             // then this board is not legal.
             if has_queen {
@@ -47,11 +61,10 @@ fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bo
         }
 
         // Move to the next square in the series.
-        r += dr;
-        c += dc;
+        move_in(&mut pos, &direction);
 
         // If we fall off the board, then the series is legal.
-        if r >= INUM_ROWS || c >= INUM_COLS || r < 0 || c < 0 {
+        if outside_board(&pos) {
             return true;
         }
     }
@@ -112,7 +125,7 @@ fn board_is_a_solution(board: &mut Board) -> bool {
     let mut num_queens = 0;
     for r in 0..NUM_ROWS {
         for c in 0..NUM_COLS {
-            if board[r as usize][c as usize] == 'Q' {
+            if board[r as usize][c as usize] == Field::Queen {
                 num_queens += 1;
             }
         }
@@ -131,12 +144,12 @@ fn place_queens_1(board: &mut Board, pos: Position) -> bool {
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = 'Q';
+    board[pos.row as usize][pos.column as usize] = Field::Queen;
     place_queens_1(board, next_pos);
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = '.';
+    board[pos.row as usize][pos.column as usize] = Field::Empty;
     return false;
 }
 
@@ -169,12 +182,12 @@ fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = 'Q';
+    board[pos.row as usize][pos.column as usize] = Field::Queen;
     place_queens_2(board, next_pos, num_placed + 1);
     if board_is_a_solution(board) {
         return true;
     }
-    board[pos.row as usize][pos.column as usize] = '.';
+    board[pos.row as usize][pos.column as usize] = Field::Empty;
     return false;
 }
 
@@ -226,7 +239,7 @@ fn do_place_queens_3(
     if num_attacking[pos.row as usize][pos.column as usize] == 0 {
         // Try placing a queen here and
         // recursively assigning the next square.
-        board[pos.row as usize][pos.column as usize] = 'Q';
+        board[pos.row as usize][pos.column as usize] = Field::Queen;
         num_placed += 1;
 
         // Increment the attack counts for this queen.
@@ -237,7 +250,7 @@ fn do_place_queens_3(
         }
 
         // That didn't work so remove this queen.
-        board[pos.row as usize][pos.column as usize] = '.';
+        board[pos.row as usize][pos.column as usize] = Field::Empty;
         adjust_attack_counts(num_attacking, &pos, -1);
     }
 
@@ -288,7 +301,8 @@ fn adjust_attack_counts(
 
 pub fn main() {
     // Create a NUM_ROWS x NUM_COLS array with all entries Initialized to UNVISITED.
-    let mut board = [['.'; NUM_COLS]; NUM_ROWS];
+    const EMPTY: Field = Field::Empty;
+    let mut board = [[EMPTY; NUM_COLS]; NUM_ROWS];
 
     let start = Instant::now();
     let origin = Position { row: 0, column: 0 };
@@ -313,10 +327,14 @@ pub fn main() {
 }
 
 // Display the board.
-fn dump_board(board: &mut [[char; NUM_COLS]; NUM_ROWS]) {
+fn dump_board(board: &mut Board) {
     for r in 0..NUM_ROWS {
         for c in 0..NUM_COLS {
-            print!("{:<02}", board[r][c]);
+            let c = match board[r][c] {
+                Field::Empty => ".",
+                Field::Queen => "Q",
+            };
+            print!("{:<02}", c);
         }
         println!();
     }

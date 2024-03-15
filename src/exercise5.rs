@@ -14,11 +14,7 @@ enum Field {
     Queen,
 }
 
-fn holds_queen(board: &Board, pos: &Position) -> bool {
-    board[pos.row as usize][pos.column as usize] == Field::Queen
-}
-
-type Board = [[Field; NUM_COLS]; NUM_ROWS];
+struct Board([[Field; NUM_COLS]; NUM_ROWS]);
 
 enum Direction {
     Horizontal,
@@ -71,217 +67,227 @@ impl Position {
     }
 }
 
-// Return true if this series of squares contains at most one queen.
-fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bool {
-    let mut has_queen = false;
+impl Board {
+    fn empty() -> Board {
+        Board([[Field::Empty; NUM_COLS]; NUM_ROWS])
+    }
 
-    let mut pos = pos.clone();
-    loop {
-        if holds_queen(board, &pos) {
-            // If we already have a queen on this row,
-            // then this board is not legal.
-            if has_queen {
-                return false;
+    fn holds_queen(self: &Board, pos: &Position) -> bool {
+        self.0[pos.row as usize][pos.column as usize] == Field::Queen
+    }
+    //
+    // Return true if this series of squares contains at most one queen.
+    fn series_is_legal(self: &mut Board, pos: Position, direction: Direction) -> bool {
+        let mut has_queen = false;
+
+        let mut pos = pos.clone();
+        loop {
+            if self.holds_queen(&pos) {
+                // If we already have a queen on this row,
+                // then this board is not legal.
+                if has_queen {
+                    return false;
+                }
+
+                // Remember that we have a queen on this row.
+                has_queen = true;
             }
 
-            // Remember that we have a queen on this row.
-            has_queen = true;
+            // Move to the next square in the series.
+            pos.move_in(&direction);
+
+            // If we fall off the board, then the series is legal.
+            if pos.is_outside_board() {
+                return true;
+            }
+        }
+    }
+
+    // Return true if the board is legal.
+    fn board_is_legal(self: &mut Board) -> bool {
+        // See if each row is legal.
+        for r in 0..INUM_ROWS {
+            if !self.series_is_legal(start_of_row(r), Direction::Horizontal) {
+                return false;
+            }
         }
 
-        // Move to the next square in the series.
-        pos.move_in(&direction);
+        // See if each column is legal.
+        for c in 0..INUM_COLS {
+            if !self.series_is_legal(start_of_column(c), Direction::Vertical) {
+                return false;
+            }
+        }
 
-        // If we fall off the board, then the series is legal.
+        // See if diagonals down to the right are legal.
+        for r in 0..INUM_ROWS {
+            if !self.series_is_legal(start_of_row(r), Direction::DiagonalRight) {
+                return false;
+            }
+        }
+        for c in 0..INUM_COLS {
+            if !self.series_is_legal(start_of_column(c), Direction::DiagonalRight) {
+                return false;
+            }
+        }
+
+        // See if diagonals down to the left are legal.
+        for r in 0..INUM_ROWS {
+            if !self.series_is_legal(end_of_row(r), Direction::DiagonalLeft) {
+                return false;
+            }
+        }
+        for c in 0..INUM_COLS {
+            if !self.series_is_legal(start_of_column(c), Direction::DiagonalLeft) {
+                return false;
+            }
+        }
+
+        // If we survived this long, then the board is legal.
+        return true;
+    }
+
+    // Return true if the board is legal and a solution.
+    fn board_is_a_solution(self: &mut Board) -> bool {
+        // See if it is legal.
+        if !self.board_is_legal() {
+            return false;
+        }
+
+        // See if the board contains exactly NUM_ROWS queens.
+        let mut num_queens = 0;
+        let mut pos = Position { row: 0, column: 0 };
+        for _ in 0..NUM_FIELDS {
+            if self.holds_queen(&pos) {
+                num_queens += 1;
+            }
+            pos = pos.next();
+        }
+        return num_queens == NUM_ROWS;
+    }
+
+    fn place_queens_1(self: &mut Board, pos: Position) -> bool {
         if pos.is_outside_board() {
+            return self.board_is_a_solution();
+        }
+        // Find the next square.
+        let next_pos = pos.next();
+
+        self.place_queens_1(next_pos.clone());
+        if self.board_is_a_solution() {
             return true;
         }
-    }
-}
+        self.put_queen_at(&pos);
 
-// Return true if the board is legal.
-fn board_is_legal(board: &mut Board) -> bool {
-    // See if each row is legal.
-    for r in 0..INUM_ROWS {
-        if !series_is_legal(board, start_of_row(r), Direction::Horizontal) {
-            return false;
+        self.place_queens_1(next_pos);
+        if self.board_is_a_solution() {
+            return true;
         }
-    }
-
-    // See if each column is legal.
-    for c in 0..INUM_COLS {
-        if !series_is_legal(board, start_of_column(c), Direction::Vertical) {
-            return false;
-        }
-    }
-
-    // See if diagonals down to the right are legal.
-    for r in 0..INUM_ROWS {
-        if !series_is_legal(board, start_of_row(r), Direction::DiagonalRight) {
-            return false;
-        }
-    }
-    for c in 0..INUM_COLS {
-        if !series_is_legal(board, start_of_column(c), Direction::DiagonalRight) {
-            return false;
-        }
-    }
-
-    // See if diagonals down to the left are legal.
-    for r in 0..INUM_ROWS {
-        if !series_is_legal(board, end_of_row(r), Direction::DiagonalLeft) {
-            return false;
-        }
-    }
-    for c in 0..INUM_COLS {
-        if !series_is_legal(board, start_of_column(c), Direction::DiagonalLeft) {
-            return false;
-        }
-    }
-
-    // If we survived this long, then the board is legal.
-    return true;
-}
-
-// Return true if the board is legal and a solution.
-fn board_is_a_solution(board: &mut Board) -> bool {
-    // See if it is legal.
-    if !board_is_legal(board) {
+        self.remove_queen_from(&pos);
         return false;
     }
 
-    // See if the board contains exactly NUM_ROWS queens.
-    let mut num_queens = 0;
-    let mut pos = Position { row: 0, column: 0 };
-    for _ in 0..NUM_FIELDS {
-        if holds_queen(board, &pos) {
-            num_queens += 1;
+    fn put_queen_at(self: &mut Board, pos: &Position) {
+        self.0[pos.row as usize][pos.column as usize] = Field::Queen;
+    }
+
+    fn remove_queen_from(self: &mut Board, pos: &Position) {
+        self.0[pos.row as usize][pos.column as usize] = Field::Empty;
+    }
+
+    fn place_queens_2(self: &mut Board, pos: Position, num_placed: usize) -> bool {
+        if num_placed >= NUM_QUEENS {
+            return self.board_is_a_solution();
         }
-        pos = pos.next();
-    }
-    return num_queens == NUM_ROWS;
-}
 
-fn place_queens_1(board: &mut Board, pos: Position) -> bool {
-    if pos.is_outside_board() {
-        return board_is_a_solution(board);
-    }
-    // Find the next square.
-    let next_pos = pos.next();
+        if pos.is_outside_board() {
+            return self.board_is_a_solution();
+        }
 
-    place_queens_1(board, next_pos.clone());
-    if board_is_a_solution(board) {
-        return true;
-    }
-    put_queen_at(board, &pos);
-
-    place_queens_1(board, next_pos);
-    if board_is_a_solution(board) {
-        return true;
-    }
-    remove_queen_from(board, &pos);
-    return false;
-}
-
-fn put_queen_at(board: &mut Board, pos: &Position) {
-    board[pos.row as usize][pos.column as usize] = Field::Queen;
-}
-
-fn remove_queen_from(board: &mut Board, pos: &Position) {
-    board[pos.row as usize][pos.column as usize] = Field::Empty;
-}
-
-fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
-    if num_placed >= NUM_QUEENS {
-        return board_is_a_solution(board);
-    }
-
-    if pos.is_outside_board() {
-        return board_is_a_solution(board);
-    }
-
-    // Find the next square.
-    let next_pos = pos.next();
-    place_queens_2(board, next_pos.clone(), num_placed);
-    if board_is_a_solution(board) {
-        return true;
-    }
-
-    put_queen_at(board, &pos);
-    place_queens_2(board, next_pos, num_placed + 1);
-    if board_is_a_solution(board) {
-        return true;
-    }
-
-    remove_queen_from(board, &pos);
-    return false;
-}
-
-// Set up and call place_queens_3.
-fn place_queens_3(board: &mut Board) -> bool {
-    // Make the num_attacking array.
-    // The value num_attacking[r as usize][c as usize] is the number
-    // of queens that can attack square (r, c).
-    let mut num_attacking = [[0; NUM_COLS]; NUM_ROWS];
-
-    // Call do_place_queens_3.
-    let num_placed = 0;
-    return do_place_queens_3(board, num_placed, Position::origin(), &mut num_attacking);
-}
-
-// Try placing a queen at position [r][c].
-// Keep track of the number of queens placed.
-// Keep running totals of the number of queens attacking a square.
-// Return true if we find a legal board.
-fn do_place_queens_3(
-    board: &mut Board,
-    mut num_placed: usize,
-    pos: Position,
-    num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
-) -> bool {
-    // See if we have placed all of the queens.
-    if num_placed == NUM_QUEENS {
-        // See if this is a solution.
-        return board_is_a_solution(board);
-    }
-
-    // See if we have examined the whole board.
-    if pos.is_outside_board() {
-        // We have examined all of the squares but this is not a solution.
-        return false;
-    }
-
-    // Find the next square.
-    let next_pos = pos.next();
-
-    // Leave no queen in this square and
-    // recursively assign the next square.
-    if do_place_queens_3(board, num_placed, next_pos.clone(), num_attacking) {
-        return true;
-    }
-
-    // See if we can place a queen at (r, c).
-    if num_attacking[pos.row as usize][pos.column as usize] == 0 {
-        // Try placing a queen here and
-        // recursively assigning the next square.
-        board[pos.row as usize][pos.column as usize] = Field::Queen;
-        num_placed += 1;
-
-        // Increment the attack counts for this queen.
-        adjust_attack_counts(num_attacking, &pos, 1);
-
-        if do_place_queens_3(board, num_placed, next_pos, num_attacking) {
+        // Find the next square.
+        let next_pos = pos.next();
+        self.place_queens_2(next_pos.clone(), num_placed);
+        if self.board_is_a_solution() {
             return true;
         }
 
-        // That didn't work so remove this queen.
-        board[pos.row as usize][pos.column as usize] = Field::Empty;
-        adjust_attack_counts(num_attacking, &pos, -1);
+        self.put_queen_at(&pos);
+        self.place_queens_2(next_pos, num_placed + 1);
+        if self.board_is_a_solution() {
+            return true;
+        }
+
+        self.remove_queen_from(&pos);
+        return false;
     }
 
-    // If we get here, then there is no solution from
-    // the board position before this function call.
-    // Return false to backtrack and try again farther up the call stack.
-    return false;
+    // Set up and call place_queens_3.
+    fn place_queens_3(self: &mut Board) -> bool {
+        // Make the num_attacking array.
+        // The value num_attacking[r as usize][c as usize] is the number
+        // of queens that can attack square (r, c).
+        let mut num_attacking = [[0; NUM_COLS]; NUM_ROWS];
+
+        // Call do_place_queens_3.
+        let num_placed = 0;
+        return self.do_place_queens_3(num_placed, Position::origin(), &mut num_attacking);
+    }
+
+    // Try placing a queen at position [r][c].
+    // Keep track of the number of queens placed.
+    // Keep running totals of the number of queens attacking a square.
+    // Return true if we find a legal board.
+    fn do_place_queens_3(
+        self: &mut Board,
+        mut num_placed: usize,
+        pos: Position,
+        num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
+    ) -> bool {
+        // See if we have placed all of the queens.
+        if num_placed == NUM_QUEENS {
+            // See if this is a solution.
+            return self.board_is_a_solution();
+        }
+
+        // See if we have examined the whole board.
+        if pos.is_outside_board() {
+            // We have examined all of the squares but this is not a solution.
+            return false;
+        }
+
+        // Find the next square.
+        let next_pos = pos.next();
+
+        // Leave no queen in this square and
+        // recursively assign the next square.
+        if self.do_place_queens_3(num_placed, next_pos.clone(), num_attacking) {
+            return true;
+        }
+
+        // See if we can place a queen at (r, c).
+        if num_attacking[pos.row as usize][pos.column as usize] == 0 {
+            // Try placing a queen here and
+            // recursively assigning the next square.
+            self.put_queen_at(&pos);
+            num_placed += 1;
+
+            // Increment the attack counts for this queen.
+            adjust_attack_counts(num_attacking, &pos, 1);
+
+            if self.do_place_queens_3(num_placed, next_pos, num_attacking) {
+                return true;
+            }
+
+            // That didn't work so remove this queen.
+            self.remove_queen_from(&pos);
+            adjust_attack_counts(num_attacking, &pos, -1);
+        }
+
+        // If we get here, then there is no solution from
+        // the board position before this function call.
+        // Return false to backtrack and try again farther up the call stack.
+        return false;
+    }
 }
 
 // Add amount to the attack counts for this square.
@@ -321,16 +327,15 @@ fn adjust_attack_counts(
 
 pub fn main() {
     // Create a NUM_ROWS x NUM_COLS array with all entries Initialized to UNVISITED.
-    const EMPTY: Field = Field::Empty;
-    let mut board = [[EMPTY; NUM_COLS]; NUM_ROWS];
+    let mut board = Board::empty();
 
     let start = Instant::now();
     let origin = Position::origin();
     let approach = 1;
     let success = match approach {
-        1 => place_queens_1(&mut board, origin),
-        2 => place_queens_2(&mut board, origin, 0),
-        3 => place_queens_3(&mut board),
+        1 => board.place_queens_1(origin),
+        2 => board.place_queens_2(origin, 0),
+        3 => board.place_queens_3(),
         _ => panic!("approach must be 1, 2, or 3"),
     };
     let duration = start.elapsed();
@@ -350,7 +355,7 @@ pub fn main() {
 fn dump_board(board: &mut Board) {
     for r in 0..NUM_ROWS {
         for c in 0..NUM_COLS {
-            let c = match board[r][c] {
+            let c = match board.0[r][c] {
                 Field::Empty => ".",
                 Field::Queen => "Q",
             };

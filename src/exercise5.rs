@@ -33,18 +33,41 @@ struct Position {
     column: i32,
 }
 
-fn move_in(pos: &mut Position, direction: &Direction) {
-    match direction {
-        Direction::Horizontal => pos.column += 1,
-        Direction::Vertical => pos.row += 1,
-        Direction::DiagonalRight => {
-            pos.row += 1;
-            pos.column += 1
+impl Position {
+    fn origin() -> Position {
+        Position { row: 0, column: 0 }
+    }
+
+    fn move_in(&mut self, direction: &Direction) {
+        match direction {
+            Direction::Horizontal => self.column += 1,
+            Direction::Vertical => self.row += 1,
+            Direction::DiagonalRight => {
+                self.row += 1;
+                self.column += 1
+            }
+            Direction::DiagonalLeft => {
+                self.row += 1;
+                self.column -= 1
+            }
         }
-        Direction::DiagonalLeft => {
-            pos.row += 1;
-            pos.column -= 1
+    }
+
+    fn next(self: &Position) -> Position {
+        let mut next_r = self.row;
+        let mut next_c = self.column + 1;
+        if next_c >= INUM_ROWS {
+            next_r += 1;
+            next_c = 0;
         }
+        return Position {
+            row: next_r,
+            column: next_c,
+        };
+    }
+
+    fn is_outside_board(self: &Position) -> bool {
+        self.row >= INUM_ROWS || self.row < 0 || self.column < 0 || self.column >= INUM_COLS
     }
 }
 
@@ -66,10 +89,10 @@ fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bo
         }
 
         // Move to the next square in the series.
-        move_in(&mut pos, &direction);
+        pos.move_in(&direction);
 
         // If we fall off the board, then the series is legal.
-        if outside_board(&pos) {
+        if pos.is_outside_board() {
             return true;
         }
     }
@@ -133,17 +156,17 @@ fn board_is_a_solution(board: &mut Board) -> bool {
         if holds_queen(board, &pos) {
             num_queens += 1;
         }
-        pos = next_position(&pos);
+        pos = pos.next();
     }
     return num_queens == NUM_ROWS;
 }
 
 fn place_queens_1(board: &mut Board, pos: Position) -> bool {
-    if outside_board(&pos) {
+    if pos.is_outside_board() {
         return board_is_a_solution(board);
     }
     // Find the next square.
-    let next_pos = next_position(&pos);
+    let next_pos = pos.next();
 
     place_queens_1(board, next_pos.clone());
     if board_is_a_solution(board) {
@@ -167,30 +190,17 @@ fn remove_queen_from(board: &mut Board, pos: &Position) {
     board[pos.row as usize][pos.column as usize] = Field::Empty;
 }
 
-fn next_position(pos: &Position) -> Position {
-    let mut next_r = pos.row;
-    let mut next_c = pos.column + 1;
-    if next_c >= INUM_ROWS {
-        next_r += 1;
-        next_c = 0;
-    }
-    return Position {
-        row: next_r,
-        column: next_c,
-    };
-}
-
 fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
     if num_placed >= NUM_QUEENS {
         return board_is_a_solution(board);
     }
 
-    if outside_board(&pos) {
+    if pos.is_outside_board() {
         return board_is_a_solution(board);
     }
 
     // Find the next square.
-    let next_pos = next_position(&pos);
+    let next_pos = pos.next();
     place_queens_2(board, next_pos.clone(), num_placed);
     if board_is_a_solution(board) {
         return true;
@@ -215,8 +225,7 @@ fn place_queens_3(board: &mut Board) -> bool {
 
     // Call do_place_queens_3.
     let num_placed = 0;
-    let origin = Position { row: 0, column: 0 };
-    return do_place_queens_3(board, num_placed, origin, &mut num_attacking);
+    return do_place_queens_3(board, num_placed, Position::origin(), &mut num_attacking);
 }
 
 // Try placing a queen at position [r][c].
@@ -236,13 +245,13 @@ fn do_place_queens_3(
     }
 
     // See if we have examined the whole board.
-    if outside_board(&pos) {
+    if pos.is_outside_board() {
         // We have examined all of the squares but this is not a solution.
         return false;
     }
 
     // Find the next square.
-    let next_pos = next_position(&pos);
+    let next_pos = pos.next();
 
     // Leave no queen in this square and
     // recursively assign the next square.
@@ -273,10 +282,6 @@ fn do_place_queens_3(
     // the board position before this function call.
     // Return false to backtrack and try again farther up the call stack.
     return false;
-}
-
-fn outside_board(pos: &Position) -> bool {
-    pos.row >= INUM_ROWS || pos.row < 0 || pos.column < 0 || pos.column >= INUM_COLS
 }
 
 // Add amount to the attack counts for this square.
@@ -320,7 +325,7 @@ pub fn main() {
     let mut board = [[EMPTY; NUM_COLS]; NUM_ROWS];
 
     let start = Instant::now();
-    let origin = Position { row: 0, column: 0 };
+    let origin = Position::origin();
     let approach = 1;
     let success = match approach {
         1 => place_queens_1(&mut board, origin),

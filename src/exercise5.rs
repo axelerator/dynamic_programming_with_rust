@@ -1,4 +1,7 @@
-use std::time::Instant;
+use std::{
+    ops::{AddAssign, SubAssign},
+    time::Instant,
+};
 
 // The board dimensions.
 const NUM_ROWS: usize = 5;
@@ -221,28 +224,11 @@ impl Board {
         return false;
     }
 
-    // Set up and call place_queens_3.
-    fn place_queens_3(self: &mut Board) -> bool {
-        // Make the num_attacking array.
-        // The value num_attacking[r as usize][c as usize] is the number
-        // of queens that can attack square (r, c).
-        let mut num_attacking = [[0; NUM_COLS]; NUM_ROWS];
-
-        // Call do_place_queens_3.
-        let num_placed = 0;
-        return self.do_place_queens_3(num_placed, Position::origin(), &mut num_attacking);
-    }
-
-    // Try placing a queen at position [r][c].
+    // Try placing a queen at pos.
     // Keep track of the number of queens placed.
     // Keep running totals of the number of queens attacking a square.
     // Return true if we find a legal board.
-    fn do_place_queens_3(
-        self: &mut Board,
-        mut num_placed: usize,
-        pos: Position,
-        num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
-    ) -> bool {
+    fn place_queens_3(self: &mut Board, mut num_placed: usize, pos: Position) -> bool {
         // See if we have placed all of the queens.
         if num_placed == NUM_QUEENS {
             // See if this is a solution.
@@ -260,27 +246,27 @@ impl Board {
 
         // Leave no queen in this square and
         // recursively assign the next square.
-        if self.do_place_queens_3(num_placed, next_pos.clone(), num_attacking) {
+        if self.place_queens_3(num_placed, next_pos.clone()) {
             return true;
         }
 
         // See if we can place a queen at (r, c).
-        if num_attacking[pos.row as usize][pos.column as usize] == 0 {
+        if self.is_not_attacked(&pos) {
             // Try placing a queen here and
             // recursively assigning the next square.
             self.put_queen_at(&pos);
             num_placed += 1;
 
             // Increment the attack counts for this queen.
-            adjust_attack_counts(num_attacking, &pos, 1);
+            self.adjust_attack_counts(&pos, AttackChange::Increase);
 
-            if self.do_place_queens_3(num_placed, next_pos, num_attacking) {
+            if self.place_queens_3(num_placed, next_pos) {
                 return true;
             }
 
             // That didn't work so remove this queen.
             self.remove_queen_from(&pos);
-            adjust_attack_counts(num_attacking, &pos, -1);
+            self.adjust_attack_counts(&pos, AttackChange::Decrease);
         }
 
         // If we get here, then there is no solution from
@@ -288,43 +274,78 @@ impl Board {
         // Return false to backtrack and try again farther up the call stack.
         return false;
     }
+
+    fn is_not_attacked(&self, pos: &Position) -> bool {
+        if self.0[pos.row as usize][pos.column as usize] == Field::Empty(0) {
+            return true;
+        }
+        false
+    }
+
+    fn adjust_attack_count_at(&mut self, pos: &Position, attack_change: &AttackChange) {
+        if let Field::Empty(mut current) = self.0[pos.row as usize][pos.column as usize] {
+            match attack_change {
+                AttackChange::Increase => current.add_assign(1),
+                AttackChange::Decrease => current.sub_assign(1),
+            }
+        } else {
+            panic!("Field must be empty");
+        }
+    }
+
+    fn adjust_attack_counts(self: &mut Board, pos: &Position, attack_change: AttackChange) {
+        // Attacks in the same row.
+        for i in 0..INUM_COLS {
+            self.adjust_attack_count_at(
+                &Position {
+                    row: pos.row,
+                    column: i,
+                },
+                &attack_change,
+            )
+        }
+
+        // Attacks in the same column.
+        for i in 0..INUM_ROWS {
+            self.adjust_attack_count_at(
+                &Position {
+                    row: i,
+                    column: pos.column,
+                },
+                &attack_change,
+            )
+        }
+
+        // Attacks in the upper left to lower right diagonal.
+        for i in -INUM_ROWS..INUM_ROWS {
+            let test_pos = Position {
+                row: pos.row + i,
+                column: pos.column + i,
+            };
+            if !pos.is_outside_board() {
+                self.adjust_attack_count_at(&test_pos, &attack_change);
+            }
+        }
+
+        // Attacks in the upper right to lower left diagonal.
+        for i in -INUM_ROWS..INUM_ROWS {
+            let test_pos = Position {
+                row: pos.row + i,
+                column: pos.column - i,
+            };
+            if !pos.is_outside_board() {
+                self.adjust_attack_count_at(&test_pos, &attack_change);
+            }
+        }
+    }
+}
+
+enum AttackChange {
+    Increase,
+    Decrease,
 }
 
 // Add amount to the attack counts for this square.
-fn adjust_attack_counts(
-    num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
-    pos: &Position,
-    amount: i32,
-) {
-    // Attacks in the same row.
-    for i in 0..INUM_COLS {
-        num_attacking[pos.row as usize][i as usize] += amount
-    }
-
-    // Attacks in the same column.
-    for i in 0..INUM_ROWS {
-        num_attacking[i as usize][pos.column as usize] += amount
-    }
-
-    // Attacks in the upper left to lower right diagonal.
-    for i in -INUM_ROWS..INUM_ROWS {
-        let test_r = pos.row + i;
-        let test_c = pos.column + i;
-        if test_r >= 0 && test_r < INUM_ROWS && test_c >= 0 && test_c < INUM_ROWS {
-            num_attacking[test_r as usize][test_c as usize] += amount;
-        }
-    }
-
-    // Attacks in the upper right to lower left diagonal.
-    for i in -INUM_ROWS..INUM_ROWS {
-        let test_r = pos.row + i;
-        let test_c = pos.column - i;
-        if test_r >= 0 && test_r < INUM_ROWS && test_c >= 0 && test_c < INUM_ROWS {
-            num_attacking[test_r as usize][test_c as usize] += amount;
-        }
-    }
-}
-
 pub fn main() {
     // Create a NUM_ROWS x NUM_COLS array with all entries Initialized to UNVISITED.
     let mut board = Board::empty();
@@ -335,7 +356,7 @@ pub fn main() {
     let success = match approach {
         1 => board.place_queens_1(origin),
         2 => board.place_queens_2(origin, 0),
-        3 => board.place_queens_3(),
+        3 => board.place_queens_3(0, origin),
         _ => panic!("approach must be 1, 2, or 3"),
     };
     let duration = start.elapsed();

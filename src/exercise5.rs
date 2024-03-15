@@ -3,6 +3,7 @@ use std::time::Instant;
 // The board dimensions.
 const NUM_ROWS: usize = 5;
 const NUM_COLS: usize = NUM_ROWS;
+const NUM_QUEENS: usize = NUM_ROWS;
 const INUM_ROWS: i32 = NUM_ROWS as i32;
 const INUM_COLS: i32 = NUM_COLS as i32;
 
@@ -153,7 +154,7 @@ fn next_position(pos: &Position) -> Position {
 }
 
 fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
-    if num_placed >= NUM_ROWS {
+    if num_placed >= NUM_QUEENS {
         return board_is_a_solution(board);
     }
 
@@ -196,12 +197,12 @@ fn place_queens_3(board: &mut Board) -> bool {
 // Return true if we find a legal board.
 fn do_place_queens_3(
     board: &mut Board,
-    mut num_placed: i32,
+    mut num_placed: usize,
     pos: Position,
     num_attacking: &mut [[i32; NUM_COLS]; NUM_ROWS],
 ) -> bool {
     // See if we have placed all of the queens.
-    if num_placed == INUM_ROWS {
+    if num_placed == NUM_QUEENS {
         // See if this is a solution.
         return board_is_a_solution(board);
     }
@@ -291,9 +292,13 @@ pub fn main() {
 
     let start = Instant::now();
     let origin = Position { row: 0, column: 0 };
-    let success = place_queens_1(&mut board, origin);
-    //let success = place_queens_2(&mut board, 0, 0, 0);
-    //let success = place_queens_3(&mut board);
+    let approach = 1;
+    let success = match approach {
+        1 => place_queens_1(&mut board, origin),
+        2 => place_queens_2(&mut board, origin, 0),
+        3 => place_queens_3(&mut board),
+        _ => panic!("approach must be 1, 2, or 3"),
+    };
     let duration = start.elapsed();
 
     println!("Time: {:?}", duration);

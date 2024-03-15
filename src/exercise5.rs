@@ -124,16 +124,8 @@ fn place_queens_1(board: &mut Board, pos: Position) -> bool {
         return board_is_a_solution(board);
     }
     // Find the next square.
-    let mut next_r = pos.row;
-    let mut next_c = pos.column + 1;
-    if next_c >= INUM_ROWS {
-        next_r += 1;
-        next_c = 0;
-    }
-    let next_pos = Position {
-        row: next_r,
-        column: next_c,
-    };
+    let next_pos = next_position(&pos);
+
     place_queens_1(board, next_pos.clone());
     if board_is_a_solution(board) {
         return true;
@@ -145,6 +137,19 @@ fn place_queens_1(board: &mut Board, pos: Position) -> bool {
     }
     board[pos.row as usize][pos.column as usize] = '.';
     return false;
+}
+
+fn next_position(pos: &Position) -> Position {
+    let mut next_r = pos.row;
+    let mut next_c = pos.column + 1;
+    if next_c >= INUM_ROWS {
+        next_r += 1;
+        next_c = 0;
+    }
+    return Position {
+        row: next_r,
+        column: next_c,
+    };
 }
 
 fn place_queens_2(board: &mut Board, r: i32, c: i32, num_placed: usize) -> bool {

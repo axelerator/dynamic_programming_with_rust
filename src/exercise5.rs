@@ -120,7 +120,7 @@ fn board_is_a_solution(board: &mut Board) -> bool {
 }
 
 fn place_queens_1(board: &mut Board, pos: Position) -> bool {
-    if pos.row >= INUM_ROWS {
+    if outside_board(&pos) {
         return board_is_a_solution(board);
     }
     // Find the next square.
@@ -157,7 +157,7 @@ fn place_queens_2(board: &mut Board, pos: Position, num_placed: usize) -> bool {
         return board_is_a_solution(board);
     }
 
-    if pos.row >= INUM_ROWS {
+    if outside_board(&pos) {
         return board_is_a_solution(board);
     }
 
@@ -207,7 +207,7 @@ fn do_place_queens_3(
     }
 
     // See if we have examined the whole board.
-    if pos.row >= INUM_ROWS {
+    if outside_board(&pos) {
         // We have examined all of the squares but this is not a solution.
         return false;
     }
@@ -244,6 +244,10 @@ fn do_place_queens_3(
     // the board position before this function call.
     // Return false to backtrack and try again farther up the call stack.
     return false;
+}
+
+fn outside_board(pos: &Position) -> bool {
+    pos.row >= INUM_ROWS || pos.row < 0 || pos.column < 0 || pos.column >= INUM_COLS
 }
 
 // Add amount to the attack counts for this square.
@@ -286,9 +290,10 @@ pub fn main() {
     let mut board = [['.'; NUM_COLS]; NUM_ROWS];
 
     let start = Instant::now();
-    //let success = place_queens_1(&mut board, 0, 0);
+    let origin = Position { row: 0, column: 0 };
+    let success = place_queens_1(&mut board, origin);
     //let success = place_queens_2(&mut board, 0, 0, 0);
-    let success = place_queens_3(&mut board);
+    //let success = place_queens_3(&mut board);
     let duration = start.elapsed();
 
     println!("Time: {:?}", duration);

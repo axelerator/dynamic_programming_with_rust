@@ -37,6 +37,21 @@ impl Position {
         Position { row: 0, column: 0 }
     }
 
+    fn start_of_row(row: i32) -> Position {
+        Position { row, column: 0 }
+    }
+
+    fn start_of_column(column: i32) -> Position {
+        Position { row: 0, column }
+    }
+
+    fn end_of_row(row: i32) -> Position {
+        Position {
+            row,
+            column: INUM_COLS - 1,
+        }
+    }
+
     fn move_in(&mut self, direction: &Direction) {
         match direction {
             Direction::Horizontal => self.column += 1,
@@ -110,38 +125,38 @@ impl Board {
     fn board_is_legal(self: &mut Board) -> bool {
         // See if each row is legal.
         for r in 0..INUM_ROWS {
-            if !self.series_is_legal(start_of_row(r), Direction::Horizontal) {
+            if !self.series_is_legal(Position::start_of_row(r), Direction::Horizontal) {
                 return false;
             }
         }
 
         // See if each column is legal.
         for c in 0..INUM_COLS {
-            if !self.series_is_legal(start_of_column(c), Direction::Vertical) {
+            if !self.series_is_legal(Position::start_of_column(c), Direction::Vertical) {
                 return false;
             }
         }
 
         // See if diagonals down to the right are legal.
         for r in 0..INUM_ROWS {
-            if !self.series_is_legal(start_of_row(r), Direction::DiagonalRight) {
+            if !self.series_is_legal(Position::start_of_row(r), Direction::DiagonalRight) {
                 return false;
             }
         }
         for c in 0..INUM_COLS {
-            if !self.series_is_legal(start_of_column(c), Direction::DiagonalRight) {
+            if !self.series_is_legal(Position::start_of_column(c), Direction::DiagonalRight) {
                 return false;
             }
         }
 
         // See if diagonals down to the left are legal.
         for r in 0..INUM_ROWS {
-            if !self.series_is_legal(end_of_row(r), Direction::DiagonalLeft) {
+            if !self.series_is_legal(Position::end_of_row(r), Direction::DiagonalLeft) {
                 return false;
             }
         }
         for c in 0..INUM_COLS {
-            if !self.series_is_legal(start_of_column(c), Direction::DiagonalLeft) {
+            if !self.series_is_legal(Position::start_of_column(c), Direction::DiagonalLeft) {
                 return false;
             }
         }
@@ -385,19 +400,4 @@ fn dump_board(board: &mut Board) {
         println!();
     }
     println!();
-}
-
-fn start_of_row(row: i32) -> Position {
-    Position { row, column: 0 }
-}
-
-fn start_of_column(column: i32) -> Position {
-    Position { row: 0, column }
-}
-
-fn end_of_row(row: i32) -> Position {
-    Position {
-        row,
-        column: INUM_COLS - 1,
-    }
 }

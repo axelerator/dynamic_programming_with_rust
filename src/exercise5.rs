@@ -1,23 +1,38 @@
 use std::time::Instant;
 
-// The board dimens5ons.
-const NUM_ROWS: usize = 10;
+// The board dimensions.
+const NUM_ROWS: usize = 5;
 const NUM_COLS: usize = NUM_ROWS;
 const INUM_ROWS: i32 = NUM_ROWS as i32;
 const INUM_COLS: i32 = NUM_COLS as i32;
 
+type Board = [[char; NUM_COLS]; NUM_ROWS];
+
+enum Direction {
+    Horizontal,
+    Vertical,
+    DiagonalRight,
+    DiagonalLeft,
+}
+
+#[derive(Clone)]
+struct Position {
+    row: i32,
+    column: i32,
+}
+
 // Return true if this series of squares contains at most one queen.
-fn series_is_legal(
-    board: &mut [[char; NUM_COLS]; NUM_ROWS],
-    r0: i32,
-    c0: i32,
-    dr: i32,
-    dc: i32,
-) -> bool {
+fn series_is_legal(board: &mut Board, pos: Position, direction: Direction) -> bool {
     let mut has_queen = false;
 
-    let mut r = r0;
-    let mut c = c0;
+    let mut r = pos.row;
+    let mut c = pos.column;
+    let (dr, dc) = match direction {
+        Direction::Horizontal => (0, 1),
+        Direction::Vertical => (1, 0),
+        Direction::DiagonalRight => (1, 1),
+        Direction::DiagonalLeft => (1, -1),
+    };
     loop {
         if board[r as usize][c as usize] == 'Q' {
             // If we already have a queen on this row,
@@ -42,41 +57,41 @@ fn series_is_legal(
 }
 
 // Return true if the board is legal.
-fn board_is_legal(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
+fn board_is_legal(board: &mut Board) -> bool {
     // See if each row is legal.
     for r in 0..INUM_ROWS {
-        if !series_is_legal(board, r, 0, 0, 1) {
+        if !series_is_legal(board, start_of_row(r), Direction::Horizontal) {
             return false;
         }
     }
 
     // See if each column is legal.
     for c in 0..INUM_COLS {
-        if !series_is_legal(board, 0, c, 1, 0) {
+        if !series_is_legal(board, start_of_column(c), Direction::Vertical) {
             return false;
         }
     }
 
     // See if diagonals down to the right are legal.
     for r in 0..INUM_ROWS {
-        if !series_is_legal(board, r, 0, 1, 1) {
+        if !series_is_legal(board, start_of_row(r), Direction::DiagonalRight) {
             return false;
         }
     }
     for c in 0..INUM_COLS {
-        if !series_is_legal(board, 0, c, 1, 1) {
+        if !series_is_legal(board, start_of_column(c), Direction::DiagonalRight) {
             return false;
         }
     }
 
     // See if diagonals down to the left are legal.
     for r in 0..INUM_ROWS {
-        if !series_is_legal(board, r, INUM_ROWS - 1, 1, -1) {
+        if !series_is_legal(board, end_of_row(r), Direction::DiagonalLeft) {
             return false;
         }
     }
     for c in 0..INUM_COLS {
-        if !series_is_legal(board, 0, c, 1, -1) {
+        if !series_is_legal(board, start_of_column(c), Direction::DiagonalLeft) {
             return false;
         }
     }
@@ -86,7 +101,7 @@ fn board_is_legal(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
 }
 
 // Return true if the board is legal and a solution.
-fn board_is_a_solution(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
+fn board_is_a_solution(board: &mut Board) -> bool {
     // See if it is legal.
     if !board_is_legal(board) {
         return false;
@@ -104,36 +119,35 @@ fn board_is_a_solution(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
     return num_queens == NUM_ROWS;
 }
 
-fn place_queens_1(board: &mut [[char; NUM_COLS]; NUM_ROWS], r: i32, c: i32) -> bool {
-    if r >= INUM_ROWS {
+fn place_queens_1(board: &mut Board, pos: Position) -> bool {
+    if pos.row >= INUM_ROWS {
         return board_is_a_solution(board);
     }
     // Find the next square.
-    let mut next_r = r;
-    let mut next_c = c + 1;
+    let mut next_r = pos.row;
+    let mut next_c = pos.column + 1;
     if next_c >= INUM_ROWS {
         next_r += 1;
         next_c = 0;
     }
-    place_queens_1(board, next_r, next_c);
+    let next_pos = Position {
+        row: next_r,
+        column: next_c,
+    };
+    place_queens_1(board, next_pos.clone());
     if board_is_a_solution(board) {
         return true;
     }
-    board[r as usize][c as usize] = 'Q';
-    place_queens_1(board, next_r, next_c);
+    board[pos.row as usize][pos.column as usize] = 'Q';
+    place_queens_1(board, next_pos);
     if board_is_a_solution(board) {
         return true;
     }
-    board[r as usize][c as usize] = '.';
+    board[pos.row as usize][pos.column as usize] = '.';
     return false;
 }
 
-fn place_queens_2(
-    board: &mut [[char; NUM_COLS]; NUM_ROWS],
-    r: i32,
-    c: i32,
-    num_placed: usize,
-) -> bool {
+fn place_queens_2(board: &mut Board, r: i32, c: i32, num_placed: usize) -> bool {
     if num_placed >= NUM_ROWS {
         return board_is_a_solution(board);
     }
@@ -162,7 +176,7 @@ fn place_queens_2(
 }
 
 // Set up and call place_queens_3.
-fn place_queens_3(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
+fn place_queens_3(board: &mut Board) -> bool {
     // Make the num_attacking array.
     // The value num_attacking[r as usize][c as usize] is the number
     // of queens that can attack square (r, c).
@@ -178,7 +192,7 @@ fn place_queens_3(board: &mut [[char; NUM_COLS]; NUM_ROWS]) -> bool {
 // Keep running totals of the number of queens attacking a square.
 // Return true if we find a legal board.
 fn do_place_queens_3(
-    board: &mut [[char; NUM_COLS]; NUM_ROWS],
+    board: &mut Board,
     mut num_placed: i32,
     r: i32,
     c: i32,
@@ -302,4 +316,19 @@ fn dump_board(board: &mut [[char; NUM_COLS]; NUM_ROWS]) {
         println!();
     }
     println!();
+}
+
+fn start_of_row(row: i32) -> Position {
+    Position { row, column: 0 }
+}
+
+fn start_of_column(column: i32) -> Position {
+    Position { row: 0, column }
+}
+
+fn end_of_row(row: i32) -> Position {
+    Position {
+        row,
+        column: INUM_COLS - 1,
+    }
 }
